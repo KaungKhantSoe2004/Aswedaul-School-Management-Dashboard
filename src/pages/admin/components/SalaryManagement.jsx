@@ -128,8 +128,11 @@ function SalaryManagement() {
               withCredentials:true
             });
   
-            const generatedData = transformApiData(response.data.data);
-            setSalaries(generatedData);
+            // const generatedData = transformApiData(response.data.data);
+            // setSalaries(generatedData);
+            if(response.status == 200){
+              window.location.reload();
+            }
         } catch (error) {
             setError(error.response.data.message)
             // alert(error.response.data.message);
@@ -145,6 +148,7 @@ function SalaryManagement() {
     };
 
     const handleEditClick = (salaryItem) => {
+      console.log(salaryItem, 'is salary Item')
         setFormData({
             user_id: salaryItem.user_id.toString(), 
             username: salaryItem.username,
@@ -220,7 +224,7 @@ function SalaryManagement() {
 
 
     const LoadingIndicator = () => (
-        <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="flex items-center justify-center min-h-[100vh]">
             <div className="text-center p-6 rounded-lg" style={{backgroundColor: theme.white}}>
                 <div className="animate-spin rounded-full h-12 w-12 border-4 border-t-4 mx-auto mb-4" style={{ borderColor: theme.lightGray, borderTopColor: theme.primary }}></div>
                 <p className="text-lg font-medium" style={{ color: theme.dark }}>Loading salary data...</p>

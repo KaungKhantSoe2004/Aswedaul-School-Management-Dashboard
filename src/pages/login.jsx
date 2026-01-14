@@ -4,6 +4,9 @@ import axios from "axios"
 import { useState, useEffect, useRef } from "react"
 import { FiMail, FiLock, FiEye, FiEyeOff, FiBookOpen, FiChevronRight, FiShield, FiTrendingUp, FiUsers, FiCheck } from "react-icons/fi"
 import { useNavigate } from "react-router-dom";
+import { routeProtector } from "../assets/middleware";
+import { useDispatch } from "react-redux";
+import { setProfile } from "../store/reducers/profileReducer";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -12,18 +15,20 @@ export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [isHovered, setIsHovered] = useState(false)
+  const [isLoading, setIsLoading] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const [activeFeature, setActiveFeature] = useState(0)
   const [isInputFocused, setIsInputFocused] = useState(false)
   const [loginError, setLoginError] = useState("")
-  const [showSuccess, setShowSuccess] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false);
+  const dispatch = useDispatch();
   const fetchData = async()=>{
    const response = await axios.get(`${admin_backend_domain_name}api/me`, {
     withCredentials:true
    });
    if(response.status == 200){
-      navigate('/')
+      navigate('/');
+      console.log(response.data, 'is response')
    }else{
      return
    }
@@ -89,10 +94,17 @@ export default function LoginPage() {
       });
       console.log(response);
       if(response.status == 200){
-        navigate("/")
+          const data = await routeProtector();
+          if(data.status ==true){ 
+           dispatch(setProfile(data.data));
+           navigate("/")
+            setIsLoading(false)  
+          }
+   
       }else{
         console.log(response, 'is resp dudde')
         setLoginError(response.data.message)
+        setIsLoading(false)
       }
 
     }
@@ -101,6 +113,7 @@ export default function LoginPage() {
     setIsLoading(false) 
    }catch(err){
     console.log(err, 'is error bro');
+    setIsLoading(false) ;
     console.log(err.response.data.message)
       if(err.response.data.message){
         setLoginError(err.response.data.message)

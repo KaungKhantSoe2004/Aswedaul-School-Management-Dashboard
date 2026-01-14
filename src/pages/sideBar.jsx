@@ -107,16 +107,16 @@ export default function Sidebar({
         setExpandedDropdown(null);
       },
     },
-    {
-      id: "chat",
-      label: "Messaging",
-      link: "/admin/messenger",
-      icon: FaComments,
-      onClick: () => {
-        setCurrentPage("chat");
-        setExpandedDropdown(null);
-      },
-    },
+    // {
+    //   id: "chat",
+    //   label: "Messaging",
+    //   link: "/admin/messenger",
+    //   icon: FaComments,
+    //   onClick: () => {
+    //     setCurrentPage("chat");
+    //     setExpandedDropdown(null);
+    //   },
+    // },
     {
       id: "grades",
       label: "Grades",
@@ -200,11 +200,12 @@ export default function Sidebar({
     },
   ];
   const setMenu = () => {
+    console.log(userType, 'is User type')
     if (userType == "teacher") {
       return teacherMenuItems;
     } else if (userType == "student") {
       return studentMenuItems;
-    } else if (userType == "gradeManager") {
+    } else if (userType == "manager") {
       return gradeManagerItems;
     } else {
       return adminMenuItems;

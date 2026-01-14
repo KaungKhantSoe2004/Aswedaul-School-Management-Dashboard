@@ -13,9 +13,11 @@ import {
   FiDollarSign,
   FiBook,
 } from "react-icons/fi";
+import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
 export default function AdminDashboard() {
+  const profile = useSelector(store => store.profile.profile);
   const admin_backend_domain_name = import.meta.env.VITE_ADMIN_BACKEND_DOMAIN_NAME;
   const [notices, setNotices] = useState([]);
   const navigate = useNavigate();
@@ -80,46 +82,6 @@ export default function AdminDashboard() {
   // Recent students data for table
   const recentStudents = useMemo(
     () => [
-      {
-        id: 1,
-        name: "John Smith",
-        grade: "Grade 10",
-        email: "john.s@school.edu",
-        status: "Active",
-        joinDate: "2024-09-15",
-      },
-      {
-        id: 2,
-        name: "Sarah Johnson",
-        grade: "Grade 11",
-        email: "sarah.j@school.edu",
-        status: "Active",
-        joinDate: "2024-09-10",
-      },
-      {
-        id: 3,
-        name: "Michael Brown",
-        grade: "Grade 9",
-        email: "michael.b@school.edu",
-        status: "Pending",
-        joinDate: "2024-09-20",
-      },
-      {
-        id: 4,
-        name: "Emily Davis",
-        grade: "Grade 12",
-        email: "emily.d@school.edu",
-        status: "Active",
-        joinDate: "2024-08-28",
-      },
-      {
-        id: 5,
-        name: "David Wilson",
-        grade: "Grade 8",
-        email: "david.w@school.edu",
-        status: "Inactive",
-        joinDate: "2024-09-05",
-      },
     ],
     []
   );
@@ -158,7 +120,7 @@ const fetchData = async()=> {
     withCredentials: true
   });
   console.log(response.data, 'is response data bro ');
-  if(response.status == 200){
+  if(response.status == 200 ){
      setNotices(response.data.data)
   }
 
@@ -180,12 +142,24 @@ const fetchData = async()=> {
   }, []);
 
   // Notice Board Functions
-  const addNotice = () => {
-    if (newNotice.trim()) {
+  const addNotice = async() => {
+    const user_id = profile.id;
+    const user_role = profile.role;
+    const response = await axios.post(`${admin_backend_domain_name}api/admin/createNotice`, {
+      user_id,
+      user_role,
+      message: newNotice,
+      authorization: "all",
+      grade: null
+    }, {
+      withCredentials: true
+    })
+    console.log(response, 'is the response')
+    if (newNotice.trim() && response.status == 201) {
       const notice = {
         id: Date.now(),
-        text: newNotice,
-        date: new Date().toISOString().split("T")[0],
+        message: newNotice,
+        created_at: new Date().toISOString().split("T")[0],
       };
       setNotices([notice, ...notices]);
       setNewNotice("");
@@ -194,7 +168,7 @@ const fetchData = async()=> {
 
   const startEditNotice = (notice) => {
     setEditingNotice(notice.id);
-    setEditNoticeText(notice.text);
+    setEditNoticeText(notice.message);
   };
 
   const saveEditNotice = () => {
@@ -440,44 +414,79 @@ const fetchData = async()=> {
                     </div>
                   </div>
                 ) : (
-                  <>
-                    <div className="flex-1">
-                      <p className="mb-2" style={{ color: schoolTheme.dark }}>
-                        {notice.text}
-                      </p>
-                      <p
-                        className="text-sm flex items-center gap-2"
-                        style={{ color: schoolTheme.light }}
-                      >
-                        <FiBook size={10} />
-                        {notice.date}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => startEditNotice(notice)}
-                        className="p-2 transition-all duration-200 hover:scale-110 border rounded-lg"
-                        style={{
-                          color: schoolTheme.primary,
-                          backgroundColor: schoolTheme.background,
-                          borderColor: schoolTheme.primary,
-                        }}
-                      >
-                        <FiEdit size={16} />
-                      </button>
-                      <button
-                        onClick={() => deleteNotice(notice.id)}
-                        className="p-2 transition-all duration-200 hover:scale-110 border rounded-lg"
-                        style={{
-                          color: "#E74C3C",
-                          backgroundColor: "#FEF2F2",
-                          borderColor: "#E74C3C",
-                        }}
-                      >
-                        <FiTrash2 size={16} />
-                      </button>
-                    </div>
-                  </>
+      <>
+  <div className="flex-1">
+    <p className="mb-2" style={{ color: schoolTheme.dark }}>
+      {notice.message}
+    </p>
+
+    <div className="flex flex-wrap items-center gap-3 text-sm">
+      {/* Date */}
+      <span
+        className="flex items-center gap-2"
+        style={{ color: schoolTheme.light }}
+      >
+        <FiBook size={10} />
+        {notice.created_at}
+      </span>
+
+      {/* Grade Badge (only if grade exists) */}
+      {notice.grade !== null && (
+        <span
+          className="px-3 py-1 text-xs font-semibold rounded-full border"
+          style={{
+            color: schoolTheme.primary,
+            backgroundColor: schoolTheme.background,
+            borderColor: schoolTheme.primary,
+          }}
+        >
+          Grade - {notice.grade}
+        </span>
+      )}
+
+      {/* Authorization Badge */}
+      {notice.authorization && (
+        <span
+          className="px-3 py-1 text-xs font-semibold rounded-full border capitalize"
+          style={{
+            color: "#065F46",
+            backgroundColor: "#ECFDF5",
+            borderColor: "#10B981",
+          }}
+        >
+          {notice.authorization}
+        </span>
+      )}
+    </div>
+  </div>
+
+  <div className="flex gap-2">
+    <button
+      onClick={() => startEditNotice(notice)}
+      className="p-2 transition-all duration-200 hover:scale-110 border rounded-lg"
+      style={{
+        color: schoolTheme.primary,
+        backgroundColor: schoolTheme.background,
+        borderColor: schoolTheme.primary,
+      }}
+    >
+      <FiEdit size={16} />
+    </button>
+
+    <button
+      onClick={() => deleteNotice(notice.id)}
+      className="p-2 transition-all duration-200 hover:scale-110 border rounded-lg"
+      style={{
+        color: "#E74C3C",
+        backgroundColor: "#FEF2F2",
+        borderColor: "#E74C3C",
+      }}
+    >
+      <FiTrash2 size={16} />
+    </button>
+  </div>
+</>
+
                 )}
               </div>
             </div>

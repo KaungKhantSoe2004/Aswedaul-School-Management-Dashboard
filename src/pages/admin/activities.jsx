@@ -422,7 +422,7 @@ export default function Activities() {
   // --- Status Components ---
 
   const LoadingIndicator = () => (
-    <div className="flex items-center justify-center min-h-[50vh]">
+    <div className="flex items-center justify-center min-h-[100vh]">
         <div className="text-center p-6 rounded-lg" style={{backgroundColor: theme.white}}>
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-t-4 mx-auto mb-4" style={{ borderColor: theme.lightGray, borderTopColor: theme.primary }}></div>
             <p className="text-lg font-medium" style={{ color: theme.dark }}>Fetching activities...</p>

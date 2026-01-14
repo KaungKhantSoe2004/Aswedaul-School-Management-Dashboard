@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import axios from "axios";
+import { useState, useMemo, useEffect } from "react";
 import {
   FiAlertCircle,
   FiBarChart2,
@@ -12,7 +13,11 @@ import {
   FiTrash2,
   FiPlus,
   FiSave,
+  FiCheck,
+  FiX,
+  FiClock,
 } from "react-icons/fi";
+import { useSelector } from "react-redux";
 
 export default function GradeManagerDashboard() {
   const gradeTheme = {
@@ -27,103 +32,84 @@ export default function GradeManagerDashboard() {
     white: "#FFFFFF",
   };
 
-  const managerName = "John";
-  const grade = "Grade 8";
-  const gradeManagerId = "manager_001"; // Current manager's ID
 
-  // Statistics data
-  const statsData = useMemo(
-    () => [
-      {
-        id: 1,
-        label: "Total Students",
-        value: "247",
-        icon: FiUsers,
-        color: gradeTheme.primary,
-      },
-      {
-        id: 2,
-        label: "Students by Class",
-        value: "6 Classes",
-        icon: FiFileText,
-        color: gradeTheme.secondary,
-      },
-      {
-        id: 3,
-        label: "Pending Admissions",
-        value: "12",
-        icon: FiAlertTriangle,
-        color: gradeTheme.warning,
-      },
-      {
-        id: 4,
-        label: "Leave Requests",
-        value: "8",
-        icon: FiAlertCircle,
-        color: gradeTheme.accent,
-      },
-      {
-        id: 5,
-        label: "Notices Today",
-        value: "4",
-        icon: FiFileText,
-        color: gradeTheme.danger,
-      },
-    ],
-    []
-  );
+  const profile = useSelector(store => store.profile.profile);
+  
+  // Leave requests state
+  const [leaveRequests, setLeaveRequests] = useState([]);
+  const [loadingLeaveRequests, setLoadingLeaveRequests] = useState(true);
+  const [issues, setIssues] = useState([]);
+  const [admissionCount, setAdmissionCount] = useState(0);
+  const [studentsCount, setStudentsCount] = useState(0);
+  const fetchData = async () => {
+    try {
+      
+      setLoadingLeaveRequests(true);
+      const admin_backend_domain_name = import.meta.env.VITE_ADMIN_BACKEND_DOMAIN_NAME;
+      console.log('before fetching');
+      const response = await axios.get(
+        `${admin_backend_domain_name}api/gradeManager/dashboard/${profile?.grade}`,
+        { withCredentials: true }
+      );
+      console.log(response,'is respomse')
+      if (response.status === 200) {
+        setNotices(response.data.notice || []);
+        setLeaveRequests(response.data.dashboard.leaveRequests || []);
+        setIssues(response.data.dashboard.issuesStudents || []);
+        setStudentsCount(response.data.dashboard.studentCount || 0);
+        setAdmissionCount(response.data.dashboard.admissionCount || 0);
+      }
+    } catch (error) {
+      console.error("Error fetching leave requests:", error);
+      setLeaveRequests([]);
+    } finally {
+      setLoadingLeaveRequests(false);
+    }
+  };
 
+
+  useEffect(() => {
+    fetchData();
+    console.log('fetched');
+  }, []);
+  
+
+  
   // Notice board data
-  const [notices, setNotices] = useState([
-    {
-      id: 1,
-      text: "Entrance Exam will be on Jan 12.",
-      createdBy: "manager_001",
-      createdAt: "2024-11-20",
-    },
-    {
-      id: 2,
-      text: "Grade 8 Class B meeting on Jan 15.",
-      createdBy: "manager_001",
-      createdAt: "2024-11-18",
-    },
-    {
-      id: 3,
-      text: "School cleaning day on Jan 20.",
-      createdBy: "manager_001",
-      createdAt: "2024-11-15",
-    },
-    {
-      id: 4,
-      text: "Submit monthly report before Jan 10.",
-      createdBy: "manager_001",
-      createdAt: "2024-11-10",
-    },
-  ]);
+  const backend_domain_name = import.meta.env.VITE_BACKEND_DOMAIN_NAME;
+  const [notices, setNotices] = useState([]);
   const [showNoticeForm, setShowNoticeForm] = useState(false);
   const [newNoticeText, setNewNoticeText] = useState("");
   const [editingNoticeId, setEditingNoticeId] = useState(null);
   const [editingNoticeText, setEditingNoticeText] = useState("");
 
   // Notice CRUD functions
-  const addNotice = () => {
-    if (newNoticeText.trim()) {
-      const newNotice = {
-        id: Date.now(),
-        text: newNoticeText,
-        createdBy: gradeManagerId,
-        createdAt: new Date().toISOString().split("T")[0],
-      };
-      setNotices([newNotice, ...notices]);
-      setNewNoticeText("");
-      setShowNoticeForm(false);
+  const addNotice = async () => {
+    console.log(profile, 'is user');
+    const admin_backend_domain_name = import.meta.env.VITE_ADMIN_BACKEND_DOMAIN_NAME;
+    const user_id = profile.id;
+    const user_role = profile.role;
+    const user_grade = profile.grade;
+    const response = await axios.post(`${admin_backend_domain_name}api/admin/createNotice`, {
+      user_id,
+      user_role,
+      message: newNoticeText,
+      authorization: 'students',
+      grade: String(user_grade)
+    }, {
+      withCredentials: true
+    });
+    if(response.status == 201){
+      window.location.reload();
     }
+  
+   
   };
 
   const startEditNotice = (notice) => {
     if (notice.createdBy === gradeManagerId) {
       setEditingNoticeId(notice.id);
-      setEditingNoticeText(notice.text);
+      setEditingNoticeText(notice.message);
     }
   };
 
@@ -146,62 +132,105 @@ export default function GradeManagerDashboard() {
     }
   };
 
-  // Students with health issues
-  const healthAlerts = useMemo(
-    () => [
-      {
-        id: 1,
-        name: "Aung Ko",
-        class: "A",
-        gender: "Boy",
-        condition: "Asthma",
-        level: "Medium",
-      },
-      {
-        id: 2,
-        name: "Su Su",
-        class: "B",
-        gender: "Girl",
-        condition: "Heart Condition",
-        level: "High",
-      },
-      {
-        id: 3,
-        name: "Win Kyaw",
-        class: "C",
-        gender: "Boy",
-        condition: "Vision Problem",
-        level: "Low",
-      },
-      {
-        id: 4,
-        name: "Thiri Hnin",
-        class: "A",
-        gender: "Girl",
-        condition: "Allergy (nuts)",
-        level: "Medium",
-      },
-      {
-        id: 5,
-        name: "Khin Mar",
-        class: "D",
-        gender: "Girl",
-        condition: "Diabetes",
-        level: "High",
-      },
-      {
-        id: 6,
-        name: "Tun Tun",
-        class: "F",
-        gender: "Boy",
-        condition: "Hearing Issue",
-        level: "Low",
-      },
-    ],
-    []
-  );
+  // Leave request functions
+  const updateLeaveStatus = async (leaveId, status, note = "") => {
+    try {
+      const backend_domain_name = import.meta.env.VITE_BACKEND_DOMAIN_NAME;
+      if(status == "approved"){
 
-  // Performance data
+      
+      // API call to update leave status
+      const response = await axios.get(
+        `${backend_domain_name}api/admissions/acceptRequest/${leaveId}`,
+        { withCredentials: true }
+      );
+      // console.log(response, 'is response')
+      // return
+      if (response.status === 200) {
+          window.location.reload();
+      }
+      }else{
+          
+      // API call to update leave status
+      const response = await axios.get(
+        `${backend_domain_name}api/admissions/rejectRequest/${leaveId}`,
+        { withCredentials: true }
+      );
+
+      if (response.status === 200) {
+          window.location.reload();
+      }
+      }
+      
+} catch (error) {
+      console.error("Error updating leave status:", error);
+      
+      // For demo purposes, update local state anyway
+      setLeaveRequests(prev =>
+        prev.map(request =>
+          request.id === leaveId
+            ? { ...request, status: status, note: note }
+            : request
+        )
+      );
+    }
+  };
+
+  const approveLeave = (leaveId) => {
+
+    updateLeaveStatus(leaveId, "approved", "Leave approved by grade manager");
+  };
+
+  const rejectLeave = (leaveId) => {
+    updateLeaveStatus(leaveId, "rejected", "Leave rejected by grade manager");
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  const formatDateTime = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "approved":
+        return gradeTheme.accent;
+      case "rejected":
+        return gradeTheme.danger;
+      case "pending":
+        return gradeTheme.warning;
+      default:
+        return gradeTheme.light;
+    }
+  };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case "approved":
+        return <FiCheck className="inline mr-1" />;
+      case "rejected":
+        return <FiX className="inline mr-1" />;
+      case "pending":
+        return <FiClock className="inline mr-1" />;
+      default:
+        return null;
+    }
+  };
+
+ 
   const performanceBySubject = useMemo(
     () => [
       { subject: "Mathematics", average: 82 },
@@ -715,25 +744,24 @@ export default function GradeManagerDashboard() {
           className="text-4xl font-bold mb-2"
           style={{ color: gradeTheme.dark }}
         >
-          Welcome, {managerName}
+          Welcome, {profile.name}
         </h1>
         <h2
           className="text-2xl font-semibold mb-1"
           style={{ color: gradeTheme.primary }}
         >
-          Grade Manager – {grade}
+          Grade Manager – Grade - {profile.grade}
         </h2>
         <p className="text-sm" style={{ color: gradeTheme.light }}>
-          Here is the current status of {grade}.
+          Here is the current status of Grade - {profile.grade}.
         </p>
       </section>
 
       {/* Statistics Cards */}
       <section className="mb-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          {statsData.map((stat) => (
+
             <div
-              key={stat.id}
               className="p-6 border shadow-md hover:shadow-lg transition-shadow"
               style={{
                 backgroundColor: gradeTheme.white,
@@ -746,27 +774,332 @@ export default function GradeManagerDashboard() {
                     className="text-sm font-medium mb-2"
                     style={{ color: gradeTheme.light }}
                   >
-                    {stat.label}
+                    Total Students
                   </p>
                   <p
                     className="text-3xl font-bold"
                     style={{ color: gradeTheme.dark }}
                   >
-                    {stat.value}
+            {studentsCount}
                   </p>
                 </div>
                 <div
                   className="p-3"
                   style={{
-                    backgroundColor: stat.color + "15",
-                    border: `1px solid ${stat.color}30`,
+                    backgroundColor: gradeTheme.primary + "15",
+                    border: `1px solid ${gradeTheme.color}30`,
                   }}
                 >
-                  <stat.icon size={24} style={{ color: stat.color }} />
+                  <FiUsers size={24} style={{ color: gradeTheme.primary }} />
                 </div>
               </div>
             </div>
-          ))}
+
+         <div
+              className="p-6 border shadow-md hover:shadow-lg transition-shadow"
+              style={{
+                backgroundColor: gradeTheme.white,
+                borderColor: "#E2E8F0",
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p
+                    className="text-sm font-medium mb-2"
+                    style={{ color: gradeTheme.light }}
+                  >
+                    Admissions
+                  </p>
+                  <p
+                    className="text-3xl font-bold"
+                    style={{ color: gradeTheme.dark }}
+                  >
+            {admissionCount}
+                  </p>
+                </div>
+                <div
+                  className="p-3"
+                  style={{
+                    backgroundColor: gradeTheme.accent+ "15",
+                    border: `1px solid ${gradeTheme.accent}30`,
+                  }}
+                >
+                  <FiUsers size={24} style={{ color: gradeTheme.warning }} />
+                </div>
+              </div>
+            </div>
+                     <div
+              className="p-6 border shadow-md hover:shadow-lg transition-shadow"
+              style={{
+                backgroundColor: gradeTheme.white,
+                borderColor: "#E2E8F0",
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p
+                    className="text-sm font-medium mb-2"
+                    style={{ color: gradeTheme.light }}
+                  >
+                  Leave Requests
+                  </p>
+                  <p
+                    className="text-3xl font-bold"
+                    style={{ color: gradeTheme.dark }}
+                  >
+            {leaveRequests.length}
+                  </p>
+                </div>
+                <div
+                  className="p-3"
+                  style={{
+                    backgroundColor: gradeTheme.primary + "15",
+                    border: `1px solid ${gradeTheme.color}30`,
+                  }}
+                >
+                  <FiUsers size={24} style={{ color: gradeTheme.accent }} />
+                </div>
+              </div>
+            </div>
+                     <div
+              className="p-6 border shadow-md hover:shadow-lg transition-shadow"
+              style={{
+                backgroundColor: gradeTheme.white,
+                borderColor: "#E2E8F0",
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p
+                    className="text-sm font-medium mb-2"
+                    style={{ color: gradeTheme.light }}
+                  >
+                    Notices
+                  </p>
+                  <p
+                    className="text-3xl font-bold"
+                    style={{ color: gradeTheme.dark }}
+                  >
+            {notices.length}
+                  </p>
+                </div>
+                <div
+                  className="p-3"
+                  style={{
+                    backgroundColor: gradeTheme.primary + "15",
+                    border: `1px solid ${gradeTheme.color}30`,
+                  }}
+                >
+                  <FiUsers size={24} style={{ color: gradeTheme.danger }} />
+                </div>
+              </div>
+            </div>
+        </div>
+      </section>
+
+      {/* Leave Requests Section */}
+      <section className="mb-8">
+        <div
+          className="p-6 border shadow-md"
+          style={{
+            backgroundColor: gradeTheme.white,
+            borderColor: "#E2E8F0",
+          }}
+        >
+          <div className="flex justify-between items-center mb-4">
+            <h3
+              className="text-xl font-semibold flex items-center gap-2"
+              style={{ color: gradeTheme.dark }}
+            >
+              <FiClock style={{ color: gradeTheme.accent }} />
+              Leave Requests
+            </h3>
+
+          </div>
+
+          {loadingLeaveRequests ? (
+            <div className="text-center py-8" style={{ color: gradeTheme.light }}>
+              Loading leave requests...
+            </div>
+          ) : leaveRequests.length === 0 ? (
+            <div className="text-center py-8" style={{ color: gradeTheme.light }}>
+              No leave requests found
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr style={{ backgroundColor: gradeTheme.background }}>
+                    <th
+                      className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
+                      style={{
+                        color: gradeTheme.light,
+                        borderBottom: `1px solid #E2E8F0`,
+                      }}
+                    >
+                      Student
+                    </th>
+                    <th
+                      className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
+                      style={{
+                        color: gradeTheme.light,
+                        borderBottom: `1px solid #E2E8F0`,
+                      }}
+                    >
+                      Duration
+                    </th>
+                    <th
+                      className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
+                      style={{
+                        color: gradeTheme.light,
+                        borderBottom: `1px solid #E2E8F0`,
+                      }}
+                    >
+                      Description
+                    </th>
+                    <th
+                      className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
+                      style={{
+                        color: gradeTheme.light,
+                        borderBottom: `1px solid #E2E8F0`,
+                      }}
+                    >
+                      Status
+                    </th>
+                    <th
+                      className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
+                      style={{
+                        color: gradeTheme.light,
+                        borderBottom: `1px solid #E2E8F0`,
+                      }}
+                    >
+                      Submitted
+                    </th>
+                    <th
+                      className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
+                      style={{
+                        color: gradeTheme.light,
+                        borderBottom: `1px solid #E2E8F0`,
+                      }}
+                    >
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {leaveRequests.map((request) => (
+                    <tr
+                      key={request.id}
+                      className="hover:bg-gray-50 transition-colors"
+                    >
+                      <td
+                        className="px-4 py-4"
+                        style={{
+                          color: gradeTheme.dark,
+                          borderBottom: `1px solid #E2E8F0`,
+                        }}
+                      >
+                        <div className="font-medium">{request.student_name}</div>
+                        <div className="text-xs" style={{ color: gradeTheme.light }}>
+                           {request.name}
+                        </div>
+                      </td>
+                      <td
+                        className="px-4 py-4"
+                        style={{
+                          color: gradeTheme.dark,
+                          borderBottom: `1px solid #E2E8F0`,
+                        }}
+                      >
+                        <div className="font-semibold">{request.duration} day{request.duration !== 1 ? 's' : ''}</div>
+                      </td>
+                      <td
+                        className="px-4 py-4"
+                        style={{
+                          color: gradeTheme.dark,
+                          borderBottom: `1px solid #E2E8F0`,
+                        }}
+                      >
+                        <div className="text-sm">{request.description}</div>
+                        {request.note && (
+                          <div className="text-xs mt-1" style={{ color: gradeTheme.light }}>
+                            Note: {request.note}
+                          </div>
+                        )}
+                      </td>
+                      <td
+                        className="px-4 py-4"
+                        style={{
+                          borderBottom: `1px solid #E2E8F0`,
+                        }}
+                      >
+                        <span
+                          className="inline-flex items-center px-3 py-1 text-xs font-medium"
+                          style={{
+                            backgroundColor: getStatusColor(request.status) + '20',
+                            color: getStatusColor(request.status),
+                            border: `1px solid ${getStatusColor(request.status)}`,
+                          }}
+                        >
+                          {getStatusIcon(request.status)}
+                          {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                        </span>
+                      </td>
+                      <td
+                        className="px-4 py-4 text-sm"
+                        style={{
+                          color: gradeTheme.light,
+                          borderBottom: `1px solid #E2E8F0`,
+                        }}
+                      >
+                        {formatDateTime(request.created_at)}
+                      </td>
+                      <td
+                        className="px-4 py-4"
+                        style={{
+                          borderBottom: `1px solid #E2E8F0`,
+                        }}
+                      >
+                        {request.status === 'pending' && (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => approveLeave(request.id)}
+                              className="flex items-center gap-1 px-3 py-1 text-xs font-medium"
+                              style={{
+                                backgroundColor: gradeTheme.accent,
+                                color: gradeTheme.white,
+                                border: `1px solid ${gradeTheme.accent}`,
+                              }}
+                            >
+                              <FiCheck size={12} />
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => rejectLeave(request.id)}
+                              className="flex items-center gap-1 px-3 py-1 text-xs font-medium"
+                              style={{
+                                backgroundColor: gradeTheme.danger,
+                                color: gradeTheme.white,
+                                border: `1px solid ${gradeTheme.danger}`,
+                              }}
+                            >
+                              <FiX size={12} />
+                              Reject
+                            </button>
+                          </div>
+                        )}
+                        {request.status !== 'pending' && (
+                          <span className="text-xs" style={{ color: gradeTheme.light }}>
+                            Processed
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </section>
 
@@ -906,15 +1239,15 @@ export default function GradeManagerDashboard() {
                 ) : (
                   <>
                     <div className="flex-1">
-                      <p style={{ color: gradeTheme.dark }}>{notice.text}</p>
+                      <p style={{ color: gradeTheme.dark }}>{notice.message}</p>
                       <p
                         className="text-xs mt-1"
                         style={{ color: gradeTheme.light }}
                       >
-                        {notice.createdAt}
+                        {notice.created_at}
                       </p>
                     </div>
-                    {notice.createdBy === gradeManagerId && (
+                    {notice.createdBy === profile.user_id && (
                       <div className="flex gap-2">
                         <button
                           onClick={() => startEditNotice(notice)}
@@ -1026,7 +1359,7 @@ export default function GradeManagerDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {healthAlerts.map((alert) => (
+                {issues.map((alert) => (
                   <tr
                     key={alert.id}
                     className="hover:bg-gray-50 transition-colors"
@@ -1065,16 +1398,16 @@ export default function GradeManagerDashboard() {
                         borderBottom: `1px solid #E2E8F0`,
                       }}
                     >
-                      {alert.condition}
+                      {alert.issue}
                     </td>
                     <td
                       className="px-4 py-4 text-sm font-medium"
                       style={{
-                        color: getLevelColor(alert.level),
+                        color: getLevelColor(alert.issue_level),
                         borderBottom: `1px solid #E2E8F0`,
                       }}
                     >
-                      {alert.level}
+                      {alert.issue_level}
                     </td>
                   </tr>
                 ))}
@@ -1084,122 +1417,7 @@ export default function GradeManagerDashboard() {
         </div>
       </section>
 
-      {/* Academic Charts Section */}
-      <section className="mb-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Average Marks by Subject */}
-        <div
-          className="p-6 border shadow-md"
-          style={{
-            backgroundColor: gradeTheme.white,
-            borderColor: "#E2E8F0",
-          }}
-        >
-          <h3
-            className="text-lg font-semibold mb-6 flex items-center gap-2"
-            style={{ color: gradeTheme.dark }}
-          >
-            <FiBarChart2 style={{ color: gradeTheme.secondary }} />
-            Average Marks by Subject
-          </h3>
-          <div className="space-y-4">
-            {performanceBySubject.map((item, idx) => (
-              <div key={idx}>
-                <div className="flex justify-between mb-2">
-                  <span
-                    className="text-sm font-medium"
-                    style={{ color: gradeTheme.dark }}
-                  >
-                    {item.subject}
-                  </span>
-                  <span
-                    className="text-sm font-semibold"
-                    style={{ color: gradeTheme.primary }}
-                  >
-                    {item.average}%
-                  </span>
-                </div>
-                <div
-                  className="w-full h-2"
-                  style={{
-                    backgroundColor: "#E2E8F0",
-                    borderRadius: 0,
-                  }}
-                >
-                  <div
-                    className="h-2 transition-all"
-                    style={{
-                      width: `${item.average}%`,
-                      backgroundColor:
-                        item.average >= 85
-                          ? gradeTheme.accent
-                          : item.average >= 75
-                          ? gradeTheme.primary
-                          : gradeTheme.warning,
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
 
-        {/* Class-Wise Performance */}
-        <div
-          className="p-6 border shadow-md"
-          style={{
-            backgroundColor: gradeTheme.white,
-            borderColor: "#E2E8F0",
-          }}
-        >
-          <h3
-            className="text-lg font-semibold mb-6 flex items-center gap-2"
-            style={{ color: gradeTheme.dark }}
-          >
-            <FiBarChart2 style={{ color: gradeTheme.accent }} />
-            Class-Wise Average Performance (A–F)
-          </h3>
-          <div className="space-y-4">
-            {classPerformance.map((item, idx) => (
-              <div key={idx}>
-                <div className="flex justify-between mb-2">
-                  <span
-                    className="text-sm font-medium"
-                    style={{ color: gradeTheme.dark }}
-                  >
-                    Class {item.class}
-                  </span>
-                  <span
-                    className="text-sm font-semibold"
-                    style={{ color: gradeTheme.secondary }}
-                  >
-                    {item.average}%
-                  </span>
-                </div>
-                <div
-                  className="w-full h-2"
-                  style={{
-                    backgroundColor: "#E2E8F0",
-                    borderRadius: 0,
-                  }}
-                >
-                  <div
-                    className="h-2 transition-all"
-                    style={{
-                      width: `${item.average}%`,
-                      backgroundColor:
-                        item.average >= 82
-                          ? gradeTheme.accent
-                          : item.average >= 75
-                          ? gradeTheme.primary
-                          : gradeTheme.warning,
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* Top Students Section */}
       <section>

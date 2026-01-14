@@ -3,7 +3,6 @@ import "./App.css";
 import NavBar from "./pages/navBar";
 import { useEffect, useState } from "react";
 import AdminDashboard from "./pages/admin/dashboard";
-import ChatSystem from "./pages/chat";
 import UsersManagement from "./pages/admin/users";
 import FAQ from "./pages/admin/faq";
 import Gallery from "./pages/admin/gallery";
@@ -20,11 +19,25 @@ import StudentDashboard from "./pages/student/dashboard";
 import GradeEnvironment from "./pages/student/gradeEnv";
 import MyMarks from "./pages/student/student-marks";
 import LoginPage from "./pages/login";
+import { routeProtector } from "./assets/middleware";
+import { useDispatch } from "react-redux";
+import { setProfile } from "./store/reducers/profileReducer";
+import Profile from "./pages/profile";
 
-function App() {
-  const [userType, setUserType] = useState("admin");
-  const types = ["admin", "teacher", "student", "guideTeacher", "gradeManager"];
-
+ function App() {
+  const [userType, setUserType] = useState();
+  const dispatch = useDispatch();
+  const types = ["admin", "teacher", "student", "guideTeacher", "manager"];
+  useEffect(()=> {
+    const fetchUserType = async()=> {
+      const data = await routeProtector();
+      if(data.status ==true){
+        setUserType(data.data.role);
+        dispatch(setProfile(data.data));
+      }
+    }
+    fetchUserType();
+  })
   return (
     <div
       style={{ width: "100vw" }}
@@ -33,7 +46,8 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/" element={<NavBar userType={userType} />}>
+          <Route path="/" element={<NavBar  />}>
+          <Route path="/profile" element={<Profile />} />
             {userType == "admin" && (
               <>
                 <Route index element={<AdminDashboard />} />
@@ -42,7 +56,7 @@ function App() {
                 <Route path="admin/gallery" element={<Gallery />} />
                 <Route path="admin/financial" element={<SalaryManagement />} />
                 <Route path="admin/activities" element={<Activities />} />
-                <Route path="admin/messenger" element={<ChatSystem />} />
+                {/* <Route path="admin/messenger" element={<ChatSystem />} /> */}
                 <Route
                   path="admin/grade/:id"
                   element={<GradesManagementPage />}
@@ -62,9 +76,10 @@ function App() {
                 />
               </>
             )}
-            {userType == "gradeManager" && (
+            {userType == "manager" && (
               <>
                 <Route index element={<GradeManagerDashboard />} />
+                <Route path="gradeManager/exam" element={<div>Hello</div>} />
                 <Route
                   path="gradeManager/studentManagement"
                   element={<StudentsManagement />}

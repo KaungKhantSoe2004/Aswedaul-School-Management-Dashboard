@@ -2,15 +2,17 @@
 
 import { useState } from "react";
 import { FiLogOut, FiBell, FiMenu } from "react-icons/fi";
+import { useNavigate } from "react-router-dom";
 
 export default function TopBar({
-  adminData,
+  userData,
   onLogout,
   sidebarOpen,
   setSidebarOpen,
 }) {
   const [showProfile, setShowProfile] = useState(false);
-
+  const backend_domain_name = import.meta.env.VITE_BACKEND_DOMAIN_NAME;
+  const navigate = useNavigate();
   return (
     <div
       className="px-6 py-4 flex items-center justify-between border-b shadow-sm"
@@ -42,13 +44,6 @@ export default function TopBar({
       </div>
 
       <div className="flex items-center gap-4">
-        <button
-          className="p-2 rounded-lg transition-all"
-          style={{ color: "#999" }}
-          title="Notifications"
-        >
-          <FiBell size={20} />
-        </button>
 
         <div className="relative">
           <button
@@ -57,10 +52,7 @@ export default function TopBar({
             style={{ backgroundColor: "#f5f5f5", borderColor: "#d4d4d4" }}
           >
             <img
-              src={
-                adminData?.avatar ||
-                "https://api.dicebear.com/7.x/avataaars/svg?seed=admin"
-              }
+             src={`${backend_domain_name}uploads/${userData.profile}`}
               alt="Profile"
               className="w-8 h-8 rounded-full"
             />
@@ -68,12 +60,15 @@ export default function TopBar({
               className="text-sm font-medium hidden sm:block"
               style={{ color: "#000" }}
             >
-              {adminData?.name || "Admin"}
+              {userData?.name || "Admin"}
             </span>
           </button>
 
           {showProfile && (
             <div
+              onClick={()=> {
+               navigate("/profile")
+              }}
               className="absolute right-0 mt-2 w-48 rounded-lg shadow-lg border p-4 space-y-3 z-50"
               style={{ backgroundColor: "#ffffff", borderColor: "#d4d4d4" }}
             >
@@ -82,10 +77,7 @@ export default function TopBar({
                 style={{ borderColor: "#d4d4d4" }}
               >
                 <img
-                  src={
-                    adminData?.avatar ||
-                    "https://api.dicebear.com/7.x/avataaars/svg?seed=admin"
-                  }
+                 src={`${backend_domain_name}uploads/${userData.profile}`}
                   alt="Profile"
                   className="w-10 h-10 rounded-full"
                 />
@@ -94,11 +86,9 @@ export default function TopBar({
                     className="text-sm font-semibold"
                     style={{ color: "#000" }}
                   >
-                    {adminData?.name || "Admin"}
+                    {userData?.name || "Admin"}
                   </p>
-                  <p className="text-xs" style={{ color: "#999" }}>
-                    {adminData?.email || "admin@test.com"}
-                  </p>
+
                 </div>
               </div>
               <button

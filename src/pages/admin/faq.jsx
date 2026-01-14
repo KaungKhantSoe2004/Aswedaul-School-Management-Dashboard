@@ -162,7 +162,7 @@ export default function FAQ() {
   // --- RENDERING COMPONENTS ---
 
   const LoadingIndicator = () => (
-    <div className="text-center">
+    <div className="text-center min-[h-100vh]:">
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: theme.primary }}></div>
       <p className="text-lg" style={{ color: theme.dark }}>Loading FAQs...</p>
     </div>

@@ -57,6 +57,7 @@ import {
   FiInfo,
   FiChevronsDown,
   FiFile,
+  FiCheck,
 } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
@@ -92,7 +93,7 @@ export default function GradeDetailPage() {
     totalSubjects: 8,
     academicYear: "2024-2025",
   });
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState("materials");
   const [exams, setExams] = useState([]);
   const [newExam, setNewExam] = useState({
     title: "",
@@ -142,7 +143,7 @@ export default function GradeDetailPage() {
   const navigate = useNavigate(); 
   const fetchData = async()=> {
  try{
-      const response = await axios.get(`${admin_backend_domain_name}api/admin/getEachGrade/${gradeId}`, {
+    const response = await axios.get(`${admin_backend_domain_name}api/admin/getEachGrade/${gradeId}`, {
       withCredentials:true
     })
     setTeachers(response.data.data.teachers);
@@ -151,7 +152,8 @@ export default function GradeDetailPage() {
 
     setGradeManagers(response.data.data.managers);
  }catch(err){
-  console.log(err, 'is error bro')
+  console.log(err, 'is error bro');
+  
   if(err.response.status == 401){
     navigate("/login")
   }
@@ -922,22 +924,7 @@ const TeachersListTab = () => (
           </p>
         </div>
       </div>
-      <div
-        className="p-4 rounded-lg border"
-        style={{ backgroundColor: theme.white, borderColor: theme.border }}
-      >
-        <div className="text-center">
-          <p
-            className="text-2xl font-bold mb-1"
-            style={{ color: theme.primary }}
-          >
-            1:{Math.round(studentStats.active / teachers.length)}
-          </p>
-          <p className="text-xs" style={{ color: theme.light }}>
-            Student-Teacher Ratio
-          </p>
-        </div>
-      </div>
+    
     </div>
 
 
@@ -1507,16 +1494,16 @@ const ExamsTab = () => {
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(false);
   
-  // Form state
+  // Form state - REMOVE is_marked from here
   const [examForm, setExamForm] = useState({
     id: null,
     exam_name: '',
-    grade: gradeId || '', // This will come from useParams
+    grade: gradeId || '',
     exam_type: 'midterm',
     exam_start_date: '',
     exam_end_date: '',
     status: 'scheduled',
-    created_by: 1 // You should get this from user context
+    created_by: 1
   });
   
   const alertTimeoutRef = useRef(null);
@@ -1532,7 +1519,7 @@ const ExamsTab = () => {
       setLoading(true);
   
       const response = await axios.get(`${admin_backend_domain_name}api/admin/getExamsByGrade/${gradeId}`, {
-        withcredentials: true
+        withCredentials: true
       });
  
       setExams(response.data.data || []);
@@ -1597,13 +1584,19 @@ const ExamsTab = () => {
         created_by: 2
       };
       
+      // Check if editing a marked exam - check status instead of is_marked
+      if (examForm.status === 'marked') {
+        showAlert('error', 'Cannot edit marked exam');
+        return;
+      }
+      
       if (isEditing) {
-
         const response = await axios.post(`${admin_backend_domain_name}api/admin/updateExam`, payload, {
           withCredentials:true
         });
+        console.log(response, 'is response')
         if (response.status === 200) {
-          setExams(response.data.data);
+          fetchExams();
           showAlert('success', 'Exam updated successfully!');
         }
       } else {
@@ -1611,7 +1604,7 @@ const ExamsTab = () => {
           withCredentials:true
         });
         if (response.status === 200 || response.status === 201) {
-          setExams(response.data.data);
+          fetchExams()
           showAlert('success', 'Exam created successfully!');
         }
       }
@@ -1625,8 +1618,13 @@ const ExamsTab = () => {
     }
   };
   
-  // Handle edit
+  // Handle edit - check if exam is marked by checking status
   const handleEdit = (exam) => {
+    if (exam.status === 'marked') {
+      showAlert('error', 'Cannot edit marked exam');
+      return;
+    }
+    
     setExamForm({
       id: exam.id,
       exam_name: exam.exam_name,
@@ -1641,8 +1639,14 @@ const ExamsTab = () => {
     setShowForm(true);
   };
   
-  // Handle delete
+  // Handle delete - check if exam is marked by checking status
   const handleDelete = async (id) => {
+    const exam = exams.find(e => e.id === id);
+    if (exam && exam.status === 'marked') {
+      showAlert('error', 'Cannot delete marked exam');
+      return;
+    }
+    
     if (!window.confirm('Are you sure you want to delete this exam?')) return;
     
     try {
@@ -1656,6 +1660,31 @@ const ExamsTab = () => {
     } catch (error) {
       console.error('Error:', error);
       showAlert('error', 'Failed to delete exam');
+    }
+  };
+
+  // Handle "Give Marks" button click
+  const handleGiveMarks = async (exam) => {
+    try {
+      const response = await axios.post(`${admin_backend_domain_name}api/admin/makeExamMarked`, {
+        exam_id: exam.id,
+        grade_id: exam.grade
+      }, {
+        withCredentials: true
+      });
+      
+      console.log(response, 'is response');
+      if (response.status === 200) {
+        console.log("ok desu");
+        // Update the exam status locally
+        setExams(exams.map(e => 
+          e.id === exam.id ? { ...e, status: 'marked' } : e
+        ));
+        showAlert('success', 'Exam marked successfully!');
+      }
+    } catch (error) {
+      console.error('Error marking exam:', error);
+      showAlert('error', 'Failed to mark exam');
     }
   };
   
@@ -1680,7 +1709,7 @@ const ExamsTab = () => {
     exam.status.toLowerCase().includes(searchTerm.toLowerCase())
   );
   
-  // Get status badge color
+  // Get status badge color - ADD 'marked' status
   const getStatusColor = (status) => {
     switch (status) {
       case 'scheduled':
@@ -1688,6 +1717,8 @@ const ExamsTab = () => {
       case 'ongoing':
         return { bg: theme.warning + '15', text: theme.warning };
       case 'completed':
+        return { bg: theme.accent + '15', text: theme.accent };
+      case 'marked':
         return { bg: theme.success + '15', text: theme.success };
       default:
         return { bg: theme.light + '15', text: theme.light };
@@ -1721,6 +1752,19 @@ const ExamsTab = () => {
     });
   };
 
+  // Marked badge component - only show for 'marked' status
+  const MarkedBadge = () => (
+    <span className="ml-2 px-2 py-0.5 rounded text-xs font-bold"
+          style={{ 
+            backgroundColor: theme.success + '15',
+            color: theme.success,
+            border: `1px solid ${theme.success}30`
+          }}>
+      <FiCheck size={10} className="inline mr-1" />
+      MARKED
+    </span>
+  );
+
   return (
     <div className="space-y-6 relative">
       {/* Alert Notification */}
@@ -1729,7 +1773,9 @@ const ExamsTab = () => {
           className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg transition-all duration-300 transform translate-y-0 ${
             alert.type === 'success' 
               ? 'bg-green-50 border border-green-200 text-green-800'
-              : 'bg-red-50 border border-red-200 text-red-800'
+              : alert.type === 'error'
+              ? 'bg-red-50 border border-red-200 text-red-800'
+              : 'bg-blue-50 border border-blue-200 text-blue-800'
           }`}
           style={{ zIndex: 100 }}
         >
@@ -1838,9 +1884,17 @@ const ExamsTab = () => {
                   filteredExams.map((exam) => {
                     const statusColor = getStatusColor(exam.status);
                     const typeColor = getExamTypeColor(exam.exam_type);
+                    const isMarked = exam.status === 'marked';
+                    const isCompleted = exam.status === 'completed';
                     
                     return (
-                      <tr key={exam.id} style={{ borderBottomColor: theme.border + '30' }}>
+                      <tr 
+                        key={exam.id} 
+                        style={{ 
+                          borderBottomColor: theme.border + '30',
+                          backgroundColor: isMarked ? theme.success + '05' : 'transparent'
+                        }}
+                      >
                         <td className="py-3 px-4">
                           <span className="text-sm font-medium" style={{ color: theme.primary }}>
                             {exam.id || 'N/A'}
@@ -1848,8 +1902,9 @@ const ExamsTab = () => {
                         </td>
                         <td className="py-3 px-4">
                           <div>
-                            <p className="text-sm font-medium" style={{ color: theme.dark }}>
+                            <p className="text-sm font-medium flex items-center" style={{ color: theme.dark }}>
                               {exam.exam_name}
+                              {isMarked && <MarkedBadge />}
                             </p>
                           </div>
                         </td>
@@ -1887,32 +1942,73 @@ const ExamsTab = () => {
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex gap-2">
-                            <button
-                              onClick={() => handleEdit(exam)}
-                              className="p-1.5 rounded-lg border flex items-center gap-1 text-xs hover:opacity-80 transition-opacity"
-                              style={{
-                                backgroundColor: theme.white,
-                                borderColor: theme.border,
-                                color: theme.primary,
-                              }}
-                              title="Edit"
-                            >
-                              <FiEdit2 size={12} />
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => handleDelete(exam.id)}
-                              className="p-1.5 rounded-lg border flex items-center gap-1 text-xs hover:opacity-80 transition-opacity"
-                              style={{
-                                backgroundColor: theme.white,
-                                borderColor: theme.border,
-                                color: theme.danger,
-                              }}
-                              title="Delete"
-                            >
-                              <FiTrash2 size={12} />
-                              Delete
-                            </button>
+                            {/* Edit button - only show if not marked */}
+                            {!isMarked && (
+                              <button
+                                onClick={() => handleEdit(exam)}
+                                className="p-1.5 rounded-lg border flex items-center gap-1 text-xs hover:opacity-80 transition-opacity"
+                                style={{
+                                  backgroundColor: theme.white,
+                                  borderColor: theme.border,
+                                  color: theme.primary,
+                                }}
+                                title="Edit"
+                              >
+                                <FiEdit2 size={12} />
+                                Edit
+                              </button>
+                            )}
+                            
+                            {/* Delete button - only show if not marked */}
+                            {!isMarked && (
+                              <button
+                                onClick={() => handleDelete(exam.id)}
+                                className="p-1.5 rounded-lg border flex items-center gap-1 text-xs hover:opacity-80 transition-opacity"
+                                style={{
+                                  backgroundColor: theme.white,
+                                  borderColor: theme.border,
+                                  color: theme.danger,
+                                }}
+                                title="Delete"
+                              >
+                                <FiTrash2 size={12} />
+                                Delete
+                              </button>
+                            )}
+                            
+                            {/* Give Marks button - only show for completed exams that are not marked */}
+                            {isCompleted && !isMarked && (
+                              <button
+                                onClick={() => handleGiveMarks(exam)}
+                                className="p-1.5 rounded-lg border flex items-center gap-1 text-xs hover:opacity-80 transition-opacity"
+                                style={{
+                                  backgroundColor: theme.success + '10',
+                                  borderColor: theme.success + '30',
+                                  color: theme.success,
+                                }}
+                                title="Give Marks"
+                              >
+                                <FiFileText size={12} />
+                                Give Marks
+                              </button>
+                            )}
+                            
+                            {/* Marks Given button - disabled state for marked exams */}
+                            {isMarked && (
+                              <button
+                                disabled
+                                className="p-1.5 rounded-lg border flex items-center gap-1 text-xs opacity-50 cursor-not-allowed"
+                                style={{
+                                  backgroundColor: theme.light + '10',
+                                  borderColor: theme.light + '30',
+                                  color: theme.light,
+                                }}
+                                title="Marks Already Given"
+                              >
+                                <FiCheck size={12} />
+                                Marks Given
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -1949,6 +2045,12 @@ const ExamsTab = () => {
           <div className="flex items-center gap-2">
             <FiBookOpen />
             {isEditing ? "Edit Exam" : "Create New Exam"}
+            {examForm.status === 'marked' && (
+              <span className="ml-2 px-2 py-1 text-xs rounded-full" 
+                    style={{ backgroundColor: theme.success + '15', color: theme.success }}>
+                MARKED
+              </span>
+            )}
           </div>
         </h2>
 
@@ -1987,14 +2089,21 @@ const ExamsTab = () => {
               placeholder="Enter exam name"
               className="w-full pl-10 pr-4 py-3 border rounded-lg text-sm focus:ring-2"
               style={{
-                backgroundColor: theme.background,
+                backgroundColor: examForm.status === 'marked' ? theme.light + '10' : theme.background,
                 borderColor: theme.border,
-                color: theme.dark,
+                color: examForm.status === 'marked' ? theme.light : theme.dark,
                 outlineColor: theme.primary,
+                cursor: examForm.status === 'marked' ? 'not-allowed' : 'text',
               }}
               autoFocus
+              disabled={examForm.status === 'marked'}
             />
           </div>
+          {examForm.status === 'marked' && (
+            <p className="text-xs text-amber-600 mt-1">
+              This exam is marked. Editing is disabled.
+            </p>
+          )}
         </div>
 
         {/* Exam Type & Status */}
@@ -2010,10 +2119,12 @@ const ExamsTab = () => {
               required
               className="w-full px-4 py-3 border rounded-lg text-sm"
               style={{
-                backgroundColor: theme.background,
+                backgroundColor: examForm.status === 'marked' ? theme.light + '10' : theme.background,
                 borderColor: theme.border,
-                color: theme.dark,
+                color: examForm.status === 'marked' ? theme.light : theme.dark,
+                cursor: examForm.status === 'marked' ? 'not-allowed' : 'pointer',
               }}
+              disabled={examForm.status === 'marked'}
             >
               <option value="midterm">Midterm</option>
               <option value="final">Final</option>
@@ -2033,14 +2144,17 @@ const ExamsTab = () => {
               required
               className="w-full px-4 py-3 border rounded-lg text-sm"
               style={{
-                backgroundColor: theme.background,
+                backgroundColor: examForm.status === 'marked' ? theme.light + '10' : theme.background,
                 borderColor: theme.border,
-                color: theme.dark,
+                color: examForm.status === 'marked' ? theme.light : theme.dark,
+                cursor: examForm.status === 'marked' ? 'not-allowed' : 'pointer',
               }}
+              disabled={examForm.status === 'marked'}
             >
               <option value="scheduled">Scheduled</option>
               <option value="ongoing">Ongoing</option>
               <option value="completed">Completed</option>
+              <option value="marked">Marked</option>
             </select>
           </div>
         </div>
@@ -2055,128 +2169,82 @@ const ExamsTab = () => {
               <FiCalendar
                 className="absolute left-3 top-1/2 -translate-y-1/2"
                 style={{ color: theme.light }}
+                size={16}
               />
-<div>
-
-
-  <div className="relative">
-    {/* Calendar Icon */}
-    <FiCalendar
-      className="absolute left-3 top-1/2 -translate-y-1/2"
-      style={{ color: theme.light }}
-      size={16}
-    />
-
-    <input
-      type="text"
-      placeholder="YYYY-MM-DD"
-      value={examForm.exam_start_date}
-      onChange={(e) => {
-        const value = e.target.value;
-
-        if (/^\d{0,4}-?\d{0,2}-?\d{0,2}$/.test(value)) {
-          setExamForm({
-            ...examForm,
-            exam_start_date: value,
-          });
-        }
-      }}
-      className="
-        w-full
-        pl-10
-        pr-4
-        py-3
-        border
-        rounded-lg
-        text-sm
-        transition
-        focus:ring-2
-        focus:ring-offset-1
-      "
-      style={{
-        backgroundColor: theme.background,
-        borderColor: theme.border,
-        color: theme.dark,
-        outlineColor: theme.primary,
-      }}
-    />
-  </div>
-
-
-  <p className="mt-1 text-xs text-gray-500">
-    Format: YYYY-MM-DD
-  </p>
-</div>
-
-
+              <input
+                type="text"
+                placeholder="YYYY-MM-DD"
+                value={examForm.exam_start_date}
+                onChange={(e) => {
+                  if (examForm.status === 'marked') return;
+                  const value = e.target.value;
+                  if (/^\d{0,4}-?\d{0,2}-?\d{0,2}$/.test(value)) {
+                    setExamForm({
+                      ...examForm,
+                      exam_start_date: value,
+                    });
+                  }
+                }}
+                className="w-full pl-10 pr-4 py-3 border rounded-lg text-sm transition focus:ring-2 focus:ring-offset-1"
+                style={{
+                  backgroundColor: examForm.status === 'marked' ? theme.light + '10' : theme.background,
+                  borderColor: theme.border,
+                  color: examForm.status === 'marked' ? theme.light : theme.dark,
+                  outlineColor: theme.primary,
+                  cursor: examForm.status === 'marked' ? 'not-allowed' : 'text',
+                }}
+                disabled={examForm.status === 'marked'}
+              />
             </div>
+            <p className="mt-1 text-xs text-gray-500">
+              Format: YYYY-MM-DD
+            </p>
           </div>
 
           <div>
             <label className="block text-sm font-medium mb-2" style={{ color: theme.dark }}>
               End Date <span style={{ color: theme.danger }}>*</span>
             </label>
-    <div>
-
-
-  <div className="relative">
-    <FiCalendar
-      className="absolute left-3 top-1/2 -translate-y-1/2"
-      style={{ color: theme.light }}
-    />
-
-    <input
-      type="text"
-      name="exam_end_date"
-      placeholder="YYYY-MM-DD"
-      value={examForm.exam_end_date}
-      onChange={(e) => {
-        let value = e.target.value.replace(/\D/g, "");
-
-        if (value.length > 4) value = value.slice(0, 4) + "-" + value.slice(4);
-        if (value.length > 7) value = value.slice(0, 7) + "-" + value.slice(7, 10);
-
-        // Optional: block end date before start date
-        if (
-          examForm.exam_start_date &&
-          value.length === 10 &&
-          value < examForm.exam_start_date
-        ) {
-          return;
-        }
-
-        setExamForm({
-          ...examForm,
-          exam_end_date: value,
-        });
-      }}
-      required
-      className="
-        w-full
-        pl-10
-        pr-4
-        py-3
-        border
-        rounded-lg
-        text-sm
-        transition
-        focus:ring-2
-        focus:ring-offset-1
-      "
-      style={{
-        backgroundColor: theme.background,
-        borderColor: theme.border,
-        color: theme.dark,
-        outlineColor: theme.primary,
-      }}
-    />
-  </div>
-
-  <p className="mt-1 text-xs text-gray-500">
-    Format: YYYY-MM-DD
-  </p>
-</div>
-
+            <div className="relative">
+              <FiCalendar
+                className="absolute left-3 top-1/2 -translate-y-1/2"
+                style={{ color: theme.light }}
+              />
+              <input
+                type="text"
+                name="exam_end_date"
+                placeholder="YYYY-MM-DD"
+                value={examForm.exam_end_date}
+                onChange={(e) => {
+                  if (examForm.status === 'marked') return;
+                  let value = e.target.value.replace(/\D/g, "");
+                  if (value.length > 4) value = value.slice(0, 4) + "-" + value.slice(4);
+                  if (value.length > 7) value = value.slice(0, 7) + "-" + value.slice(7, 10);
+                  
+                  if (examForm.exam_start_date && value.length === 10 && value < examForm.exam_start_date) {
+                    return;
+                  }
+                  
+                  setExamForm({
+                    ...examForm,
+                    exam_end_date: value,
+                  });
+                }}
+                required
+                className="w-full pl-10 pr-4 py-3 border rounded-lg text-sm transition focus:ring-2 focus:ring-offset-1"
+                style={{
+                  backgroundColor: examForm.status === 'marked' ? theme.light + '10' : theme.background,
+                  borderColor: theme.border,
+                  color: examForm.status === 'marked' ? theme.light : theme.dark,
+                  outlineColor: theme.primary,
+                  cursor: examForm.status === 'marked' ? 'not-allowed' : 'text',
+                }}
+                disabled={examForm.status === 'marked'}
+              />
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              Format: YYYY-MM-DD
+            </p>
           </div>
         </div>
 
@@ -2184,6 +2252,11 @@ const ExamsTab = () => {
         <div className="text-xs text-gray-500">
           <p>• Grade ID: {gradeId} (auto-filled)</p>
           <p>• Exam will be linked automatically</p>
+          {examForm.status === 'marked' && (
+            <p className="text-amber-600 mt-2">
+              ⚠️ This exam is marked. Editing is disabled.
+            </p>
+          )}
         </div>
 
         {/* Footer */}
@@ -2208,17 +2281,19 @@ const ExamsTab = () => {
             Cancel
           </button>
 
-          <button
-            type="submit"
-            className="flex items-center gap-2 px-5 py-2.5 text-sm rounded-lg"
-            style={{
-              backgroundColor: theme.primary,
-              color: theme.white,
-            }}
-          >
-            <FiSave size={16} />
-            {isEditing ? "Update Exam" : "Create Exam"}
-          </button>
+          {examForm.status !== 'marked' && (
+            <button
+              type="submit"
+              className="flex items-center gap-2 px-5 py-2.5 text-sm rounded-lg"
+              style={{
+                backgroundColor: theme.primary,
+                color: theme.white,
+              }}
+            >
+              <FiSave size={16} />
+              {isEditing ? "Update Exam" : "Create Exam"}
+            </button>
+          )}
         </div>
       </form>
     </div>
@@ -2228,6 +2303,8 @@ const ExamsTab = () => {
     </div>
   );
 };
+
+
 
 
 
@@ -2422,9 +2499,9 @@ const StudyMaterialsTab = () => {
     if (!validateForm()) return;
 
     try {
-      // console.log(newMaterial, 'is new Materials')
+      console.log(newMaterial, 'is new Materials')
       const materialData = {
-                subjectId: newMaterial.subject,
+        subjectId: newMaterial.subject,
         type: newMaterial.fileType,
         title: newMaterial.title,
         url: newMaterial.url,
@@ -2437,11 +2514,12 @@ const StudyMaterialsTab = () => {
       }
       );
       console.log(response, 'is response bro');
-      return;
-      if(response.status == 200){
+      // return;
+      if(response.status == 200 || 201){
         showAlert('success', 'Study material added successfully!');
         resetForm();
         setShowFormModal(false);
+        window.location.reload();
       }
 
 
@@ -2474,21 +2552,24 @@ const StudyMaterialsTab = () => {
     }
 
     try {
-      // TODO: Call your API endpoint to update material
-      // const response = await axios.post(`${admin_backend_domain_name}api/admin/updateStudyMaterial`, {
-      //   id: materialToEdit.id,
-      //   subjectId: materialToEdit.subjectId,
-      //   materialType: materialToEdit.fileType,
-      //   materialData: {
-      //     title: materialToEdit.title,
-      //     url: materialToEdit.url,
-      //     description: materialToEdit.description
-      //   }
-      // });
+      const response = await axios.post(`${admin_backend_domain_name}api/admin/updateStudyMaterial`, {
+        id: materialToEdit.id,
+        subjectId: materialToEdit.subjectId,
+        type: materialToEdit.fileType,
+          title: materialToEdit.title,
+          url: materialToEdit.url,
+          description: materialToEdit.description
+      }, {
+        withCredentials: true
+      });
+      console.log(response, 'is response')
+      if(response.status == 200 || 201){
+       showAlert('success', 'Study material updated successfully!');
+       setEditModalOpen(false);
+       setMaterialToEdit(null);
+       window.location.reload();
+      }
 
-      showAlert('success', 'Study material updated successfully!');
-      setEditModalOpen(false);
-      setMaterialToEdit(null);
       
       // TODO: Update the subjects array in parent component
 
@@ -2503,12 +2584,22 @@ const StudyMaterialsTab = () => {
     if (!window.confirm('Are you sure you want to delete this study material?')) return;
 
     try {
-      // TODO: Call your API endpoint to delete material
-      // const response = await axios.delete(
-      //   `${admin_backend_domain_name}api/admin/deleteStudyMaterial/${material.id}?type=${material.fileType}&subjectId=${material.subjectId}`
-      // );
+      console.log(material);
+      const response = await axios.post(
+        `${admin_backend_domain_name}api/admin/deleteStudyMaterial`, {
+          id: material.id,
+          type: material.fileType,
+          subjectId: material.subjectId
+        }, {
+          withCredentials: true
+        }
+      );
 
-      showAlert('success', 'Study material deleted successfully!');
+      if(response.status == 200 || 201){
+        showAlert('success', 'Study material deleted successfully!');
+        window.location.reload();
+      }
+
       
       // TODO: Update the subjects array in parent component
 
@@ -3867,6 +3958,7 @@ const SubjectsListTab = () => {
       await axios.get(`${admin_backend_domain_name}api/admin/deleteSubject/${id}`, {
         withCredentials:true
       });
+      setSubjects(subjects.filter(subject => subject.id !== id));
       showAlert('success', 'Subject deleted successfully!');
     } catch (error) {
       showAlert('error', 'Failed to delete subject');
@@ -4518,13 +4610,14 @@ const SubjectsListTab = () => {
 };
 
   const tabs = [
+    {id: "materials", label: "Study Materials", icon: FiBook, component: StudyMaterialsTab},
     {id: "subjects", label: "Subjects", icon: FiSubject, component: SubjectsListTab},
     {id: "students", label: "Students List", icon: FiUsers, component: StudentsListTab},
     {id: "teachers", label: "Teachers List", icon: FiUser, component: TeachersListTab},
     {id: "guide-teachers", label: "Guide Teachers", icon: FiUserCheck, component: GuideTeachersTab},
     {id: "managers", label: "Grade Managers", icon: FiTarget, component: GradeManagersTab},
-    {id: "exams", label: "Upcoming Exams", icon: FiCalendar, component: ExamsTab},
-    {id: "materials", label: "Study Materials", icon: FiBook, component: StudyMaterialsTab},
+    {id: "exams", label: "Exams", icon: FiCalendar, component: ExamsTab},
+
     // {id: "charts", label: "Performance Charts", icon: FiTrendingUp, component: ChartsTab},
   ];
 
