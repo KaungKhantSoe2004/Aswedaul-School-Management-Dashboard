@@ -52,6 +52,7 @@ export default function NavBar() {
         { withCredentials: true }
       );
       if (res.status === 200) {
+        console.log(res, 'is response on loggin out')
         dispatch(removeProfile());
         navigate("/login");
       }
