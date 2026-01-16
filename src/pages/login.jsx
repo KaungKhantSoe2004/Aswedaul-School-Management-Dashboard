@@ -96,6 +96,7 @@ export default function LoginPage() {
       if(response.status == 200){
           const data = await routeProtector();
           if(data.status ==true){ 
+           console.log(data.data,'is profile') 
            dispatch(setProfile(data.data));
            navigate("/")
             setIsLoading(false)  

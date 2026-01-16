@@ -11,6 +11,7 @@ export const profileReducer = createSlice({
             state.profile = action.payload;
         },
         removeProfile: (state, action)=> {
+            console.log('in removing profile')
             state.profile = null;
         }
     }
