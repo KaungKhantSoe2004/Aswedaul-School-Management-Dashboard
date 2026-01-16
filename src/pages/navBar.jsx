@@ -44,6 +44,7 @@ export default function NavBar() {
 
   // 🔹 Logout
   const onLogout = async () => {
+    alert("logged out");
     try {
       const res = await axios.post(
         `${backend_domain_name}api/user/logout`,
