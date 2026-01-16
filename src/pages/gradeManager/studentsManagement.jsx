@@ -58,13 +58,13 @@ export default function StudentsManagementPage() {
   ];
 
   const backend_domain_name = import.meta.env.VITE_BACKEND_DOMAIN_NAME;
-  const [students, setStudents] = useState([]); // Currently displayed students
+  const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
-    limit: 10, // Number of items per page
+    limit: 10,
     totalStudents: 0,
   });
   const [searchTerm, setSearchTerm] = useState("");
@@ -120,7 +120,6 @@ export default function StudentsManagementPage() {
     }, 3000);
   };
 
-  // Parse JSON string to array safely
   const parsePrevClassDocument = (docString) => {
     if (!docString) return [];
     try {
@@ -136,11 +135,9 @@ export default function StudentsManagementPage() {
     setLoading(true);
     setError(null);
     try {
-      // Calculate offset based on page number
       const offset = (page - 1) * pagination.limit;
       
       let url = `${backend_domain_name}api/user/getStudents/${profile.grade}`;
-      // Add pagination and search parameters to the URL
       const params = new URLSearchParams({
         limit: pagination.limit.toString(),
         offset: offset.toString(),
@@ -152,7 +149,7 @@ export default function StudentsManagementPage() {
       
       url += `?${params.toString()}`;
       
-      console.log('Fetching from URL:', url); // Debug log
+      console.log('Fetching from URL:', url);
 
       const response = await axios.get(url, {
         withCredentials: true,
@@ -160,10 +157,8 @@ export default function StudentsManagementPage() {
 
       if (response.status === 200) {
         const responseData = response.data;
-        console.log('API Response:', responseData); // Debug log
+        console.log('API Response:', responseData);
         
-        // Assuming your API returns data in this structure
-        // Adjust according to your actual API response structure
         const studentsData = responseData.data || responseData.students || [];
         const totalCount = responseData.total || responseData.count || studentsData.length;
         
@@ -174,13 +169,6 @@ export default function StudentsManagementPage() {
           totalStudents: totalCount,
           totalPages: Math.ceil(totalCount / pagination.limit),
         }));
-        
-        console.log('Pagination state:', {
-          currentPage: page,
-          totalStudents: totalCount,
-          totalPages: Math.ceil(totalCount / pagination.limit),
-          limit: pagination.limit
-        });
       }
     } catch (err) {
       console.error("Error fetching students:", err);
@@ -195,16 +183,14 @@ export default function StudentsManagementPage() {
     }
   }, [backend_domain_name, profile.grade, pagination.limit, navigate]);
 
-  // Fetch data when component mounts or when search term changes
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchData(1, searchTerm);
-    }, 500); // Debounce search by 500ms
+    }, 500);
 
     return () => clearTimeout(timer);
   }, [searchTerm, fetchData]);
 
-  // Handle page change
   const handlePageChange = (page) => {
     if (page >= 1 && page <= pagination.totalPages) {
       fetchData(page, searchTerm);
@@ -488,7 +474,6 @@ export default function StudentsManagementPage() {
           editingId ? "Student Updated" : "Student Created",
           editingId ? "Student has been updated successfully!" : "New student has been created successfully!"
         );
-        // Refresh current page after save
         fetchData(pagination.currentPage, searchTerm);
         resetForm();
       } else {
@@ -518,7 +503,6 @@ export default function StudentsManagementPage() {
         });
         if (response.status === 200) {
           showAlert("success", "Student Deleted", "Student has been deleted successfully!");
-          // Refresh current page after deletion
           fetchData(pagination.currentPage, searchTerm);
         }
       } catch (err) {
@@ -570,7 +554,6 @@ export default function StudentsManagementPage() {
           showAlert("warning", "Partial Success", `${successfulDeletes} deleted, ${failedDeletes} failed. Please try again.`);
         }
 
-        // Refresh current page after deletion
         fetchData(pagination.currentPage, searchTerm);
         setSelectedStudents([]);
       } catch (err) {
@@ -580,7 +563,6 @@ export default function StudentsManagementPage() {
     }
   };
 
-  // View existing document
   const viewDocument = (docUrl) => {
     window.open(docUrl, '_blank');
   };
@@ -732,12 +714,696 @@ export default function StudentsManagementPage() {
         </div>
       </div>
 
-      {/* Rest of your JSX remains the same (the form modal and table) */}
-      {/* The form modal code stays exactly the same */}
-
       {(isCreating || editingId) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm bg-black/20">
-          {/* ... (Form modal JSX remains exactly the same) ... */}
+          <div 
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+            style={{ backgroundColor: theme.white }}
+          >
+            {/* Modal Header */}
+            <div className="p-6 border-b flex items-center justify-between" style={{ borderColor: theme.border }}>
+              <div>
+                <h2 className="text-2xl font-bold" style={{ color: theme.dark }}>
+                  <FiUserPlus className="inline-block mr-2" size={24} style={{ color: theme.primary }} />
+                  {editingId ? 'Edit Student' : 'Create New Student'}
+                </h2>
+                <p className="text-sm mt-1" style={{ color: theme.light }}>
+                  {editingId ? 'Update student information' : 'Fill in the details to add a new student'}
+                </p>
+              </div>
+              <button
+                onClick={resetForm}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                style={{ color: theme.light }}
+              >
+                <FiX size={24} />
+              </button>
+            </div>
+
+            {/* Modal Body - Scrollable */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Basic Information */}
+                <div className="md:col-span-2">
+                  <h3 className="text-lg font-semibold mb-4 pb-2 border-b" style={{ color: theme.dark, borderColor: theme.border }}>
+                    Basic Information
+                  </h3>
+                </div>
+
+                {/* Profile Picture */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-2" style={{ color: theme.dark }}>
+                    Profile Picture
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <div className="relative">
+                      {profilePreview ? (
+                        <div className="relative">
+                          <img
+                            src={profilePreview}
+                            alt="Profile Preview"
+                            className="w-24 h-24 rounded-full object-cover border-4"
+                            style={{ borderColor: theme.primaryLight }}
+                          />
+                          <button
+                            onClick={removeProfileImage}
+                            className="absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center text-white text-xs"
+                            style={{ backgroundColor: theme.danger }}
+                          >
+                            <FiX size={14} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div 
+                          className="w-24 h-24 rounded-full flex flex-col items-center justify-center border-2 border-dashed"
+                          style={{ borderColor: theme.border, backgroundColor: theme.background }}
+                        >
+                          <FiUser size={32} style={{ color: theme.light }} />
+                          <span className="text-xs mt-1" style={{ color: theme.light }}>
+                            No image
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <label className="block mb-2">
+                        <div className="px-4 py-2.5 text-sm font-medium transition-all duration-200 hover:scale-105 border rounded-lg cursor-pointer text-center"
+                          style={{
+                            backgroundColor: theme.primary,
+                            color: theme.white,
+                            borderColor: theme.primary,
+                          }}
+                        >
+                          <FiImage className="inline-block mr-2" />
+                          Choose Profile Image
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleProfileImageChange}
+                          className="hidden"
+                        />
+                      </label>
+                      <p className="text-xs mt-1" style={{ color: theme.light }}>
+                        Recommended: Square image, max 2MB
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Name */}
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: theme.dark }}>
+                    Student Name *
+                  </label>
+                  <div className="relative">
+                    <FiUser className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: theme.light }} />
+                    <input
+                      type="text"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      placeholder="Enter student name"
+                      className="pl-10 pr-4 py-2.5 border rounded-lg w-full text-sm focus:outline-none focus:ring-2"
+                      style={{
+                        backgroundColor: theme.white,
+                        borderColor: theme.border,
+                        color: theme.dark,
+                        focusRingColor: theme.primary,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: theme.dark }}>
+                    Email Address *
+                  </label>
+                  <div className="relative">
+                    <FiMail className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: theme.light }} />
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      placeholder="student@example.com"
+                      className="pl-10 pr-4 py-2.5 border rounded-lg w-full text-sm focus:outline-none focus:ring-2"
+                      style={{
+                        backgroundColor: theme.white,
+                        borderColor: theme.border,
+                        color: theme.dark,
+                        focusRingColor: theme.primary,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Age */}
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: theme.dark }}>
+                    Age
+                  </label>
+                  <div className="relative">
+                    <FiCalendar className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: theme.light }} />
+                    <input
+                      type="number"
+                      name="age"
+                      value={formData.age}
+                      onChange={handleInputChange}
+                      placeholder="Enter age"
+                      className="pl-10 pr-4 py-2.5 border rounded-lg w-full text-sm focus:outline-none focus:ring-2"
+                      style={{
+                        backgroundColor: theme.white,
+                        borderColor: theme.border,
+                        color: theme.dark,
+                        focusRingColor: theme.primary,
+                      }}
+                      min="4"
+                      max="20"
+                    />
+                  </div>
+                </div>
+
+                {/* Gender */}
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: theme.dark }}>
+                    Gender
+                  </label>
+                  <div className="flex gap-4">
+                    {genderOptions.map((option) => (
+                      <label key={option.id} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="gender"
+                          value={option.id}
+                          checked={formData.gender === option.id}
+                          onChange={handleInputChange}
+                          className="w-4 h-4"
+                          style={{ accentColor: theme.primary }}
+                        />
+                        <span className="text-sm" style={{ color: theme.dark }}>
+                          {option.label}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Academic Information */}
+                <div className="md:col-span-2 mt-4">
+                  <h3 className="text-lg font-semibold mb-4 pb-2 border-b" style={{ color: theme.dark, borderColor: theme.border }}>
+                    Academic Information
+                  </h3>
+                </div>
+
+                {/* Grade */}
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: theme.dark }}>
+                    Grade
+                  </label>
+                  <select
+                    name="grade"
+                    value={formData.grade}
+                    onChange={handleInputChange}
+                    className="px-4 py-2.5 border rounded-lg w-full text-sm focus:outline-none focus:ring-2 appearance-none"
+                    style={{
+                      backgroundColor: theme.white,
+                      borderColor: theme.border,
+                      color: theme.dark,
+                      focusRingColor: theme.primary,
+                    }}
+                  >
+                    <option value="">Select Grade</option>
+                    {gradeOptions.map((grade) => (
+                      <option key={grade} value={grade}>
+                        Grade {grade}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Class */}
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: theme.dark }}>
+                    Class
+                  </label>
+                  <select
+                    name="class"
+                    value={formData.class}
+                    onChange={handleInputChange}
+                    className="px-4 py-2.5 border rounded-lg w-full text-sm focus:outline-none focus:ring-2 appearance-none"
+                    style={{
+                      backgroundColor: theme.white,
+                      borderColor: theme.border,
+                      color: theme.dark,
+                      focusRingColor: theme.primary,
+                    }}
+                  >
+                    <option value="">Select Class</option>
+                    {classOptions.map((cls) => (
+                      <option key={cls} value={cls}>
+                        Class {cls}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Academic Year */}
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: theme.dark }}>
+                    Academic Year
+                  </label>
+                  <div className="relative">
+                    <FiCalendar className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: theme.light }} />
+                    <input
+                      type="text"
+                      name="academic_year"
+                      value={formData.academic_year}
+                      onChange={handleInputChange}
+                      placeholder="e.g., 2024"
+                      className="pl-10 pr-4 py-2.5 border rounded-lg w-full text-sm focus:outline-none focus:ring-2"
+                      style={{
+                        backgroundColor: theme.white,
+                        borderColor: theme.border,
+                        color: theme.dark,
+                        focusRingColor: theme.primary,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* City */}
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: theme.dark }}>
+                    City
+                  </label>
+                  <div className="relative">
+                    <FiMapPin className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: theme.light }} />
+                    <input
+                      type="text"
+                      name="city"
+                      value={formData.city}
+                      onChange={handleInputChange}
+                      placeholder="Enter city"
+                      className="pl-10 pr-4 py-2.5 border rounded-lg w-full text-sm focus:outline-none focus:ring-2"
+                      style={{
+                        backgroundColor: theme.white,
+                        borderColor: theme.border,
+                        color: theme.dark,
+                        focusRingColor: theme.primary,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Contact Information */}
+                <div className="md:col-span-2 mt-4">
+                  <h3 className="text-lg font-semibold mb-4 pb-2 border-b" style={{ color: theme.dark, borderColor: theme.border }}>
+                    Contact Information
+                  </h3>
+                </div>
+
+                {/* Phone */}
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: theme.dark }}>
+                    Student Phone
+                  </label>
+                  <div className="relative">
+                    <FiPhone className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: theme.light }} />
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      placeholder="+1 (555) 000-0000"
+                      className="pl-10 pr-4 py-2.5 border rounded-lg w-full text-sm focus:outline-none focus:ring-2"
+                      style={{
+                        backgroundColor: theme.white,
+                        borderColor: theme.border,
+                        color: theme.dark,
+                        focusRingColor: theme.primary,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Guardian Name */}
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: theme.dark }}>
+                    Guardian Name
+                  </label>
+                  <div className="relative">
+                    <FiUserCheck className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: theme.light }} />
+                    <input
+                      type="text"
+                      name="guardianName"
+                      value={formData.guardianName}
+                      onChange={handleInputChange}
+                      placeholder="Enter guardian name"
+                      className="pl-10 pr-4 py-2.5 border rounded-lg w-full text-sm focus:outline-none focus:ring-2"
+                      style={{
+                        backgroundColor: theme.white,
+                        borderColor: theme.border,
+                        color: theme.dark,
+                        focusRingColor: theme.primary,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Guardian Phone */}
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: theme.dark }}>
+                    Guardian Phone
+                  </label>
+                  <div className="relative">
+                    <FiPhone className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: theme.light }} />
+                    <input
+                      type="tel"
+                      name="guardianPhone"
+                      value={formData.guardianPhone}
+                      onChange={handleInputChange}
+                      placeholder="+1 (555) 000-0000"
+                      className="pl-10 pr-4 py-2.5 border rounded-lg w-full text-sm focus:outline-none focus:ring-2"
+                      style={{
+                        backgroundColor: theme.white,
+                        borderColor: theme.border,
+                        color: theme.dark,
+                        focusRingColor: theme.primary,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Father's Name */}
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: theme.dark }}>
+                    Father's Name
+                  </label>
+                  <div className="relative">
+                    <FiUser className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: theme.light }} />
+                    <input
+                      type="text"
+                      name="father_name"
+                      value={formData.father_name}
+                      onChange={handleInputChange}
+                      placeholder="Enter father's name"
+                      className="pl-10 pr-4 py-2.5 border rounded-lg w-full text-sm focus:outline-none focus:ring-2"
+                      style={{
+                        backgroundColor: theme.white,
+                        borderColor: theme.border,
+                        color: theme.dark,
+                        focusRingColor: theme.primary,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Fee Information */}
+                <div className="md:col-span-2 mt-4">
+                  <h3 className="text-lg font-semibold mb-4 pb-2 border-b" style={{ color: theme.dark, borderColor: theme.border }}>
+                    Fee Information
+                  </h3>
+                </div>
+
+                {/* Annual Fee */}
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: theme.dark }}>
+                    Annual Fee ($)
+                  </label>
+                  <div className="relative">
+                    <FiDollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: theme.light }} />
+                    <input
+                      type="number"
+                      name="annual_fee"
+                      value={formData.annual_fee}
+                      onChange={handleInputChange}
+                      placeholder="0.00"
+                      className="pl-10 pr-4 py-2.5 border rounded-lg w-full text-sm focus:outline-none focus:ring-2"
+                      style={{
+                        backgroundColor: theme.white,
+                        borderColor: theme.border,
+                        color: theme.dark,
+                        focusRingColor: theme.primary,
+                      }}
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                </div>
+
+                {/* Remaining Fee */}
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: theme.dark }}>
+                    Remaining Fee ($)
+                  </label>
+                  <div className="relative">
+                    <FiDollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: theme.light }} />
+                    <input
+                      type="number"
+                      name="remaining_fee"
+                      value={formData.remaining_fee}
+                      onChange={handleInputChange}
+                      placeholder="0.00"
+                      className="pl-10 pr-4 py-2.5 border rounded-lg w-full text-sm focus:outline-none focus:ring-2"
+                      style={{
+                        backgroundColor: theme.white,
+                        borderColor: theme.border,
+                        color: theme.dark,
+                        focusRingColor: theme.primary,
+                      }}
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                </div>
+
+                {/* Password Section */}
+                <div className="md:col-span-2 mt-4">
+                  <h3 className="text-lg font-semibold mb-4 pb-2 border-b" style={{ color: theme.dark, borderColor: theme.border }}>
+                    {editingId ? 'Change Password (Optional)' : 'Account Password *'}
+                  </h3>
+                </div>
+
+                <div className="md:col-span-2">
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      placeholder={editingId ? "Leave blank to keep current password" : "Enter password"}
+                      className="pl-4 pr-10 py-2.5 border rounded-lg w-full text-sm focus:outline-none focus:ring-2"
+                      style={{
+                        backgroundColor: theme.white,
+                        borderColor: theme.border,
+                        color: theme.dark,
+                        focusRingColor: theme.primary,
+                      }}
+                    />
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="p-1 hover:bg-gray-100 rounded"
+                        style={{ color: theme.light }}
+                      >
+                        {showPassword ? 'Hide' : 'Show'}
+                      </button>
+                      {!editingId && (
+                        <button
+                          type="button"
+                          onClick={generatePassword}
+                          className="text-xs px-2 py-1 rounded hover:bg-gray-100"
+                          style={{ color: theme.primary, backgroundColor: theme.primary + '20' }}
+                        >
+                          Generate
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {!editingId && (
+                    <p className="text-xs mt-1" style={{ color: theme.light }}>
+                      Password must be at least 8 characters long
+                    </p>
+                  )}
+                </div>
+
+                {/* Previous Class Documents */}
+                <div className="md:col-span-2 mt-4">
+                  <h3 className="text-lg font-semibold mb-4 pb-2 border-b" style={{ color: theme.dark, borderColor: theme.border }}>
+                    Previous Class Documents
+                  </h3>
+                  
+                  {/* Existing Documents */}
+                  {existingDocuments.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="text-sm font-medium mb-2" style={{ color: theme.dark }}>Existing Documents:</h4>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {existingDocuments.map((doc, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between p-2 border rounded-lg"
+                            style={{ borderColor: theme.border, backgroundColor: theme.background }}
+                          >
+                            <div className="flex items-center gap-2">
+                              <FiFileText style={{ color: theme.primary }} />
+                              <span className="text-xs truncate" style={{ color: theme.dark }}>
+                                {typeof doc === 'string' ? doc.split('/').pop() : doc}
+                              </span>
+                            </div>
+                            <div className="flex gap-1">
+                              <button
+                                type="button"
+                                onClick={() => viewDocument(doc)}
+                                className="p-1 hover:bg-gray-200 rounded"
+                                style={{ color: theme.primary }}
+                                title="View"
+                              >
+                                <FiEye size={14} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => removeExistingDocument(index)}
+                                className="p-1 hover:bg-gray-200 rounded"
+                                style={{ color: theme.danger }}
+                                title="Remove"
+                              >
+                                <FiX size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* New Document Upload */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium mb-2" style={{ color: theme.dark }}>
+                      Upload New Documents
+                    </label>
+                    <div className="flex items-center gap-4">
+                      <label className="flex-1">
+                        <div className="px-4 py-2.5 text-sm font-medium transition-all duration-200 hover:scale-105 border rounded-lg cursor-pointer text-center"
+                          style={{
+                            backgroundColor: theme.secondary,
+                            color: theme.white,
+                            borderColor: theme.secondary,
+                          }}
+                        >
+                          <FiFile className="inline-block mr-2" />
+                          Choose Documents
+                        </div>
+                        <input
+                          type="file"
+                          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                          multiple
+                          onChange={handlePrevClassDocChange}
+                          className="hidden"
+                        />
+                      </label>
+                      {prevClassDocFiles.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={removeAllPrevClassDocs}
+                          className="px-4 py-2.5 text-sm font-medium transition-all duration-200 hover:scale-105 border rounded-lg"
+                          style={{
+                            backgroundColor: theme.danger,
+                            color: theme.white,
+                            borderColor: theme.danger,
+                          }}
+                        >
+                          Remove All
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Document Previews */}
+                  {prevClassDocFiles.length > 0 && (
+                    <div className="border rounded-lg p-4" style={{ borderColor: theme.border }}>
+                      <h4 className="text-sm font-medium mb-3" style={{ color: theme.dark }}>
+                        New Documents to Upload ({prevClassDocFiles.length})
+                      </h4>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        {prevClassDocFiles.map((file, index) => (
+                          <div
+                            key={index}
+                            className="relative group"
+                          >
+                            <div className="border rounded-lg overflow-hidden" style={{ borderColor: theme.border }}>
+                              {prevClassDocPreviews[index] ? (
+                                <div className="aspect-video overflow-hidden bg-gray-100">
+                                  <img
+                                    src={prevClassDocPreviews[index]}
+                                    alt={`Preview ${index}`}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="aspect-video flex items-center justify-center bg-gray-100">
+                                  <FiFileText size={32} style={{ color: theme.light }} />
+                                </div>
+                              )}
+                              <div className="p-2">
+                                <p className="text-xs truncate mb-1" style={{ color: theme.dark }}>
+                                  {file.name}
+                                </p>
+                                <p className="text-xs" style={{ color: theme.light }}>
+                                  {(file.size / 1024).toFixed(1)} KB
+                                </p>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removePrevClassDoc(index)}
+                              className="absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                              style={{ backgroundColor: theme.danger }}
+                            >
+                              <FiX size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <p className="text-xs mt-2" style={{ color: theme.light }}>
+                    Supported formats: PDF, DOC, DOCX, JPG, PNG (Max 5MB each)
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-6 border-t flex justify-end gap-3" style={{ borderColor: theme.border, backgroundColor: theme.background }}>
+              <button
+                onClick={resetForm}
+                className="px-6 py-2.5 text-sm font-medium transition-all duration-200 hover:scale-105 border rounded-lg"
+                style={{
+                  backgroundColor: theme.white,
+                  color: theme.dark,
+                  borderColor: theme.border,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveStudent}
+                className="px-6 py-2.5 text-sm font-medium transition-all duration-200 hover:scale-105 border rounded-lg flex items-center gap-2 shadow-sm"
+                style={{
+                  backgroundColor: theme.primary,
+                  color: theme.white,
+                  borderColor: theme.primary,
+                }}
+              >
+                <FiSave size={16} />
+                {editingId ? 'Update Student' : 'Create Student'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
