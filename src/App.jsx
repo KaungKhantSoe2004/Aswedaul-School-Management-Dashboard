@@ -34,11 +34,10 @@ import Profile from "./pages/profile";
       if(data.status ==true){
         setUserType(data.data.role);
         dispatch(setProfile(data.data));
-        console.log(data.data.role, 'is user type')
       }
     }
     fetchUserType();
-  });
+  })
   return (
     <div
       style={{ width: "100vw" }}
