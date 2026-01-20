@@ -65,6 +65,7 @@ export default function NavBar() {
   const fetchData = async () => {
     try {
       const data = await routeProtector();
+      console.log(data, 'is data bro hehe')
       if (data.status === true) {
         setUserType(data.data.role);
         setUserData(data.data);
