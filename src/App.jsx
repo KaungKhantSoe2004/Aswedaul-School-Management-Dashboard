@@ -34,6 +34,7 @@ import Profile from "./pages/profile";
       if(data.status ==true){
         setUserType(data.data.role);
         dispatch(setProfile(data.data));
+        console.log(data.data.role, 'is user type')
       }
     }
     fetchUserType();
