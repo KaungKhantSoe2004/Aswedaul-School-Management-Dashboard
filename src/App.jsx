@@ -38,7 +38,7 @@ import Profile from "./pages/profile";
       }
     }
     fetchUserType();
-  }, []);
+  });
   return (
     <div
       style={{ width: "100vw" }}
